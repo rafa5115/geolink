@@ -27,33 +27,35 @@ def gerar_id(tamanho=6):
 
 
 # --------------------------------------------------
-# 1) ROTA PARA GERAR LINK
+# 1) GERA LINK COM PREFIXO PERSONALIZADO
 # --------------------------------------------------
-@app.get("/gerar")
-def gerar_link():
+@app.get("/gerar/<prefixo>")
+def gerar_link(prefixo):
     new_id = gerar_id()
-    
+
+    # Salva dados na base
     DB[new_id] = {
         "id": new_id,
+        "prefixo": prefixo,
         "cliques": []
     }
-    
     salvar_db()
 
-    link = f"http://82.25.85.25:8080/r/{new_id}"
+    link = f"http://82.25.85.25:8080/{prefixo}/{new_id}"
 
     return jsonify({
         "status": "ok",
         "id": new_id,
+        "prefixo": prefixo,
         "link": link
     })
 
 
 # --------------------------------------------------
-# 2) ROTA PARA REGISTRAR CLIQUE + ENVIAR PARA N8N
+# 2) ROTA DINÂMICA PARA REGISTRAR CLIQUE
 # --------------------------------------------------
-@app.get("/r/<id>")
-def registrar(id):
+@app.get("/<prefixo>/<id>")
+def registrar(prefixo, id):
     if id not in DB:
         return "Link inválido", 404
 
@@ -64,32 +66,33 @@ def registrar(id):
     registro = {
         "ip": ip,
         "user_agent": user_agent,
-        "datetime": now
+        "datetime": now,
+        "prefixo": prefixo
     }
 
     DB[id]["cliques"].append(registro)
     salvar_db()
 
-    # ---------------------------------------------
-    # ENVIAR AUTOMATICAMENTE PARA O N8N
-    # ---------------------------------------------
+    # ENVIA WEBHOOK PARA N8N
     try:
         requests.post(
             "https://n8n.teleflowbr.com/webhook-test/7aed12c8-e20a-4129-bb31-75b213949243",
             json={
                 "id": id,
+                "prefixo": prefixo,
                 "ip": ip,
                 "user_agent": user_agent,
                 "datetime": now
             },
             timeout=5
         )
-    except Exception as e:
-        print("Erro ao chamar o webhook:", e)
+    except:
+        pass
 
     return jsonify({
         "status": "clique registrado",
         "id": id,
+        "prefixo": prefixo,
         "dados": registro
     })
 
