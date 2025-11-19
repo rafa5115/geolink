@@ -63,11 +63,14 @@ def registrar(prefixo, id):
     if id not in DB:
         return "Link inválido", 404
 
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    raw_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+
+    # Sempre pega APENAS o primeiro IP real
+    ip = raw_ip.split(",")[0].strip()
+
     user_agent = request.headers.get("User-Agent", "desconhecido")
     now = datetime.now().isoformat()
 
-    # Salva registro do clique
     registro = {
         "ip": ip,
         "user_agent": user_agent,
@@ -78,7 +81,7 @@ def registrar(prefixo, id):
     DB[id]["cliques"].append(registro)
     salvar_db()
 
-    # Envia webhook (sem travar)
+    # Envia webhook para N8N
     try:
         requests.post(
             "https://n8n.teleflowbr.com/webhook-test/7aed12c8-e20a-4129-bb31-75b213949243",
@@ -94,16 +97,16 @@ def registrar(prefixo, id):
     except:
         pass
 
-    # Retorna uma página que fecha automaticamente
-    html_auto_close = f"""
+    # Página que fecha automaticamente
+    html_auto_close = """
     <html>
         <head>
             <meta charset="UTF-8" />
             <title>OK</title>
             <script>
-                setTimeout(function() {{
+                setTimeout(function() {
                     window.close();
-                }}, 200);
+                }, 200);
             </script>
         </head>
         <body style="background:#000; color:#fff;">
@@ -113,6 +116,7 @@ def registrar(prefixo, id):
     """
 
     return html_auto_close
+
 
 
 
