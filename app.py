@@ -42,7 +42,10 @@ def gerar_link(prefixo):
     salvar_db()
 
     # LINK FINAL usando domínio (SEM :8080)
-    link = f"https://linkio.me/{prefixo}/{new_id}"
+    host = request.headers.get("Host", "linkio.me")
+    scheme = request.headers.get("X-Forwarded-Proto", "https")
+    link = f"{scheme}://{host}/{prefixo}/{new_id}"
+
 
     return jsonify({
         "status": "ok",
