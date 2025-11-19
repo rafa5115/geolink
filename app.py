@@ -84,7 +84,7 @@ def registrar(prefixo, id):
     # Envia webhook para N8N
     try:
         requests.post(
-            "https://n8n.teleflowbr.com/webhook-test/7aed12c8-e20a-4129-bb31-75b213949243",
+            "https://n8n.teleflowbr.com/webhook/7aed12c8-e20a-4129-bb31-75b213949243",
             json={
                 "id": id,
                 "prefixo": prefixo,
