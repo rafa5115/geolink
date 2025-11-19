@@ -41,7 +41,8 @@ def gerar_link(prefixo):
     }
     salvar_db()
 
-    link = f"http://82.25.85.25:8080/{prefixo}/{new_id}"
+    # LINK FINAL usando domínio (SEM :8080)
+    link = f"https://linkio.me/{prefixo}/{new_id}"
 
     return jsonify({
         "status": "ok",
@@ -59,7 +60,9 @@ def registrar(prefixo, id):
     if id not in DB:
         return "Link inválido", 404
 
+    # IP real (Cloudflare + NGINX + cliente)
     ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    
     user_agent = request.headers.get("User-Agent", "desconhecido")
     now = datetime.now().isoformat()
 
@@ -86,8 +89,8 @@ def registrar(prefixo, id):
             },
             timeout=5
         )
-    except:
-        pass
+    except Exception as e:
+        print("Erro ao enviar webhook:", e)
 
     return jsonify({
         "status": "clique registrado",
@@ -98,5 +101,8 @@ def registrar(prefixo, id):
 
 
 # --------------------------------------------------
+# 3) EXECUTAR SERVIDOR NA PORTA 8080
+# --------------------------------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
