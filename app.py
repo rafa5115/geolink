@@ -63,12 +63,11 @@ def registrar(prefixo, id):
     if id not in DB:
         return "Link inválido", 404
 
-    # IP real (Cloudflare + NGINX + cliente)
     ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-    
     user_agent = request.headers.get("User-Agent", "desconhecido")
     now = datetime.now().isoformat()
 
+    # Salva registro do clique
     registro = {
         "ip": ip,
         "user_agent": user_agent,
@@ -79,7 +78,7 @@ def registrar(prefixo, id):
     DB[id]["cliques"].append(registro)
     salvar_db()
 
-    # ENVIA WEBHOOK PARA N8N
+    # Envia webhook (sem travar)
     try:
         requests.post(
             "https://n8n.teleflowbr.com/webhook-test/7aed12c8-e20a-4129-bb31-75b213949243",
@@ -90,17 +89,31 @@ def registrar(prefixo, id):
                 "user_agent": user_agent,
                 "datetime": now
             },
-            timeout=5
+            timeout=2
         )
-    except Exception as e:
-        print("Erro ao enviar webhook:", e)
+    except:
+        pass
 
-    return jsonify({
-        "status": "clique registrado",
-        "id": id,
-        "prefixo": prefixo,
-        "dados": registro
-    })
+    # Retorna uma página que fecha automaticamente
+    html_auto_close = f"""
+    <html>
+        <head>
+            <meta charset="UTF-8" />
+            <title>OK</title>
+            <script>
+                setTimeout(function() {{
+                    window.close();
+                }}, 200);
+            </script>
+        </head>
+        <body style="background:#000; color:#fff;">
+            <p>Registrado...</p>
+        </body>
+    </html>
+    """
+
+    return html_auto_close
+
 
 
 # --------------------------------------------------
