@@ -26,6 +26,12 @@ def gerar_id(tamanho=6):
     return ''.join(secrets.choice(chars) for _ in range(tamanho))
 
 
+
+@app.get("/teste")
+def testar():
+    return "Rota funcionando"
+
+
 # --------------------------------------------------
 # 1) GERA LINK COM PREFIXO PERSONALIZADO
 # --------------------------------------------------
