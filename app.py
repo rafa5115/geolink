@@ -37,18 +37,18 @@ def testar():
 
 
 # --------------------------------------------------
-# 1) GERAR LINK COM PREFIXO PERSONALIZADO
+# 1) GERAR LINK COM PREFIXO E CRIADOR
 # --------------------------------------------------
 @app.get("/gerar/<prefixo>")
 def gerar_link(prefixo):
     new_id = gerar_id()
 
-    creator = request.args.get("creator")  # telefone / chat_id
+    creator = request.args.get("creator")  # número do criador
 
     DB[new_id] = {
         "id": new_id,
         "prefixo": prefixo,
-        "creator": creator,   # <<<<< SALVANDO O DONO DO LINK
+        "creator": creator,
         "cliques": [],
         "localizacoes": []
     }
@@ -68,14 +68,14 @@ def gerar_link(prefixo):
 
 
 # --------------------------------------------------
-# 2) REGISTRAR CLIQUE + VOLTAR AO LOCAL ORIGINAL
+# 2) REGISTRAR CLIQUE + ENVIAR WEBHOOK + VOLTAR AO WHATSAPP
 # --------------------------------------------------
 @app.get("/<prefixo>/<id>")
 def registrar(prefixo, id):
     if id not in DB:
         return "Link inválido", 404
 
-    # Capturar IP real (Cloudflare + nginx + fallback)
+    # Capturar IP real corretamente
     ip = request.headers.get("CF-Connecting-IP")
     if not ip:
         ip = request.headers.get("X-Real-IP")
@@ -91,7 +91,7 @@ def registrar(prefixo, id):
     # Dono do link
     creator = DB[id].get("creator")
 
-    # Registro salvo no JSON
+    # Registro do clique
     registro = {
         "ip": ip,
         "user_agent": user_agent,
@@ -101,13 +101,13 @@ def registrar(prefixo, id):
         "creator": creator
     }
 
-    # Evitar duplicação por IP
+    # Evitar duplicação por IP seguido
     ultimo = DB[id]["cliques"][-1] if DB[id]["cliques"] else None
     if not ultimo or ultimo["ip"] != ip:
         DB[id]["cliques"].append(registro)
         salvar_db()
 
-    # Enviar webhook p/ n8n
+    # Enviar webhook ao n8n
     try:
         requests.post(
             "http://82.25.85.25:5678/webhook/4aa565ae-6d8f-4231-8626-9512cc8f66b2",
@@ -120,31 +120,33 @@ def registrar(prefixo, id):
                 "user_agent": user_agent,
                 "datetime": now
             },
-            timeout=2
+            timeout=3
         )
     except Exception as e:
         print("Erro ao enviar webhook:", e)
 
-    # HTML invisível, volta para a página anterior
-    if referer:
+    # --------------------------------------------------
+    # REDIRECIONAMENTO AUTOMÁTICO PARA WHATSAPP DO CRIADOR
+    # --------------------------------------------------
+    if creator:  # se o link tem dono, volta para o WhatsApp dele
         html_auto_close = f'''<!DOCTYPE html>
 <html>
-  <head><meta charset="UTF-8" /></head>
+  <head><meta charset="UTF-8"></head>
   <body style="margin:0;padding:0;background:#000;">
     <script>
       setTimeout(function() {{
-        window.location.replace("{referer}");
+        window.location.href = "https://wa.me/{creator}";
       }}, 10);
     </script>
   </body>
 </html>'''
-    else:
+    else:  # fallback
         html_auto_close = '''<!DOCTYPE html>
 <html>
-  <head><meta charset="UTF-8" /></head>
+  <head><meta charset="UTF-8"></head>
   <body style="margin:0;padding:0;background:#000;">
     <script>
-      setTimeout(function() { history.back(); }, 10);
+      window.location.href = "https://google.com";
     </script>
   </body>
 </html>'''
