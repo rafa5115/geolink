@@ -75,44 +75,39 @@ def registrar(prefixo, id):
     if id not in DB:
         return "Link inválido", 404
 
-    # Capturar IP real
-
-    # Cloudflare original IP
+    # Capturar IP real (Cloudflare + nginx + fallback)
     ip = request.headers.get("CF-Connecting-IP")
-    
-    # Se não vier, tenta X-Real-IP (nginx)
     if not ip:
         ip = request.headers.get("X-Real-IP")
-    
-    # Se ainda não vier, tenta X-Forwarded-For
     if not ip:
         ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-    
-    # fallback final
     if not ip:
         ip = request.remote_addr
-
-    
 
     user_agent = request.headers.get("User-Agent", "desconhecido")
     referer = request.headers.get("Referer", None)
     now = datetime.now().isoformat()
 
+    # Dono do link
+    creator = DB[id].get("creator")
+
+    # Registro salvo no JSON
     registro = {
         "ip": ip,
         "user_agent": user_agent,
         "datetime": now,
         "prefixo": prefixo,
-        "referer": referer
+        "referer": referer,
+        "creator": creator
     }
 
-    # Evitar registrar o mesmo IP duas vezes
+    # Evitar duplicação por IP
     ultimo = DB[id]["cliques"][-1] if DB[id]["cliques"] else None
     if not ultimo or ultimo["ip"] != ip:
         DB[id]["cliques"].append(registro)
         salvar_db()
 
-    # Enviar webhook
+    # Enviar webhook p/ n8n
     try:
         requests.post(
             "http://82.25.85.25:5678/webhook-test/4aa565ae-6d8f-4231-8626-9512cc8f66b2",
@@ -121,6 +116,7 @@ def registrar(prefixo, id):
                 "prefixo": prefixo,
                 "ip": ip,
                 "referer": referer,
+                "creator": creator,
                 "user_agent": user_agent,
                 "datetime": now
             },
@@ -129,14 +125,13 @@ def registrar(prefixo, id):
     except Exception as e:
         print("Erro ao enviar webhook:", e)
 
-    # HTML de retorno automático (usa referer se existir, senão history.back())
+    # HTML invisível, volta para a página anterior
     if referer:
         html_auto_close = f'''<!DOCTYPE html>
 <html>
   <head><meta charset="UTF-8" /></head>
   <body style="margin:0;padding:0;background:#000;">
     <script>
-      // Redireciona de volta para a página de origem (referer)
       setTimeout(function() {{
         window.location.replace("{referer}");
       }}, 10);
@@ -149,7 +144,6 @@ def registrar(prefixo, id):
   <head><meta charset="UTF-8" /></head>
   <body style="margin:0;padding:0;background:#000;">
     <script>
-      // Fallback: volta no histórico do navegador
       setTimeout(function() { history.back(); }, 10);
     </script>
   </body>
