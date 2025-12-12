@@ -129,27 +129,17 @@ def registrar(prefixo, id):
     # REDIRECIONAMENTO AUTOMÁTICO PARA WHATSAPP DO CRIADOR
     # --------------------------------------------------
     if creator:  # se o link tem dono, volta para o WhatsApp dele
-        html_auto_close = f'''<!DOCTYPE html>
-<html>
-  <head><meta charset="UTF-8"></head>
-  <body style="margin:0;padding:0;background:#000;">
-    <script>
-      setTimeout(function() {{
-        window.location.href = "https://wa.me/{creator}";
-      }}, 10);
-    </script>
-  </body>
-</html>'''
-    else:  # fallback
-        html_auto_close = '''<!DOCTYPE html>
-<html>
-  <head><meta charset="UTF-8"></head>
-  <body style="margin:0;padding:0;background:#000;">
-    <script>
-      window.location.href = "https://google.com";
-    </script>
-  </body>
-</html>'''
+        html_auto_close = '''
+        <!DOCTYPE html>
+        <html>
+          <head><meta charset="UTF-8"></head>
+          <body style="margin:0;padding:0;background:#fff;">
+            <script>
+              window.location.href = "https://google.com";
+            </script>
+          </body>
+        </html>
+        '''
 
     return html_auto_close
 
