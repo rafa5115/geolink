@@ -11,7 +11,7 @@ app = Flask(__name__)
 DB_FILE = "data.json"
 
 # --------------------------------------------------
-#  CARREGAR / SALVAR BASE
+# CARREGAR / SALVAR BASE
 # --------------------------------------------------
 if os.path.exists(DB_FILE):
     with open(DB_FILE, "r") as f:
@@ -29,7 +29,7 @@ def gerar_id(tamanho=6):
 
 
 # --------------------------------------------------
-#  ROTA DE TESTE
+# ROTA DE TESTE
 # --------------------------------------------------
 @app.get("/teste")
 def testar():
@@ -37,21 +37,20 @@ def testar():
 
 
 # --------------------------------------------------
-#  1) GERAR LINK COM PREFIXO PERSONALIZADO
+# 1) GERAR LINK COM PREFIXO PERSONALIZADO
 # --------------------------------------------------
 @app.get("/gerar/<prefixo>")
 def gerar_link(prefixo):
     new_id = gerar_id()
 
-    # Criar estrutura de dados
     DB[new_id] = {
         "id": new_id,
         "prefixo": prefixo,
-        "cliques": []
+        "cliques": [],
+        "localizacoes": []
     }
     salvar_db()
 
-    # Montar link final usando domínio real
     host = "clicklink.online"
     link = f"https://{host}/{prefixo}/{new_id}"
 
@@ -64,7 +63,7 @@ def gerar_link(prefixo):
 
 
 # --------------------------------------------------
-#  2) ROTA DINÂMICA PARA REGISTRAR CLIQUE
+# 2) REGISTRAR CLIQUE + VOLTAR AO LOCAL ORIGINAL
 # --------------------------------------------------
 @app.get("/<prefixo>/<id>")
 def registrar(prefixo, id):
@@ -76,21 +75,24 @@ def registrar(prefixo, id):
     ip = raw_ip.split(",")[0].strip()
 
     user_agent = request.headers.get("User-Agent", "desconhecido")
+    referer = request.headers.get("Referer", None)
     now = datetime.now().isoformat()
 
     registro = {
         "ip": ip,
         "user_agent": user_agent,
         "datetime": now,
-        "prefixo": prefixo
+        "prefixo": prefixo,
+        "referer": referer
     }
 
-    # Evitar registrar múltiplas vezes o mesmo IP
-    if len(DB[id]["cliques"]) == 0 or DB[id]["cliques"][-1]["ip"] != ip:
+    # Evitar registrar o mesmo IP duas vezes
+    ultimo = DB[id]["cliques"][-1] if DB[id]["cliques"] else None
+    if not ultimo or ultimo["ip"] != ip:
         DB[id]["cliques"].append(registro)
         salvar_db()
 
-    # Envia webhook para n8n
+    # Enviar webhook
     try:
         requests.post(
             "http://82.25.85.25:5678/webhook-test/4aa565ae-6d8f-4231-8626-9512cc8f66b2",
@@ -98,6 +100,7 @@ def registrar(prefixo, id):
                 "id": id,
                 "prefixo": prefixo,
                 "ip": ip,
+                "referer": referer,
                 "user_agent": user_agent,
                 "datetime": now
             },
@@ -106,26 +109,37 @@ def registrar(prefixo, id):
     except Exception as e:
         print("Erro ao enviar webhook:", e)
 
-    # Página invisível + saída imediata
-    html_auto_close = """
-    <!DOCTYPE html>
-    <html>
-      <head><meta charset="UTF-8" /></head>
-      <body style="margin:0;padding:0;background:#000;">
-        <script>
-          setTimeout(() => { 
-            window.location.replace("https://google.com"); 
-          }, 10);
-        </script>
-      </body>
-    </html>
-    """
+    # HTML de retorno automático (usa referer se existir, senão history.back())
+    if referer:
+        html_auto_close = f'''<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body style="margin:0;padding:0;background:#000;">
+    <script>
+      // Redireciona de volta para a página de origem (referer)
+      setTimeout(function() {{
+        window.location.replace("{referer}");
+      }}, 10);
+    </script>
+  </body>
+</html>'''
+    else:
+        html_auto_close = '''<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8" /></head>
+  <body style="margin:0;padding:0;background:#000;">
+    <script>
+      // Fallback: volta no histórico do navegador
+      setTimeout(function() { history.back(); }, 10);
+    </script>
+  </body>
+</html>'''
 
     return html_auto_close
 
 
 # --------------------------------------------------
-#  3) EXECUTAR SERVIDOR NA PORTA 8080
+# 3) EXECUTAR SERVIDOR
 # --------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
