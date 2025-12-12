@@ -71,8 +71,17 @@ def registrar(prefixo, id):
         return "Link inválido", 404
 
     # Capturar IP real
-    raw_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-    ip = raw_ip.split(",")[0].strip()
+    # tentar pegar X-Real-IP (enviado pelo nginx)
+    ip = request.headers.get("X-Real-IP")
+    
+    # se nao tiver, tentar pegar X-Forwarded-For
+    if not ip:
+        ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+    
+    # fallback final
+    if not ip:
+        ip = request.remote_addr
+    
 
     user_agent = request.headers.get("User-Agent", "desconhecido")
     referer = request.headers.get("Referer", None)
