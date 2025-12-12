@@ -110,7 +110,7 @@ def registrar(prefixo, id):
     # Enviar webhook p/ n8n
     try:
         requests.post(
-            "http://82.25.85.25:5678/webhook-test/4aa565ae-6d8f-4231-8626-9512cc8f66b2",
+            "http://82.25.85.25:5678/webhook/4aa565ae-6d8f-4231-8626-9512cc8f66b2",
             json={
                 "id": id,
                 "prefixo": prefixo,
