@@ -43,9 +43,12 @@ def testar():
 def gerar_link(prefixo):
     new_id = gerar_id()
 
+    creator = request.args.get("creator")  # telefone / chat_id
+
     DB[new_id] = {
         "id": new_id,
         "prefixo": prefixo,
+        "creator": creator,   # <<<<< SALVANDO O DONO DO LINK
         "cliques": [],
         "localizacoes": []
     }
@@ -58,8 +61,10 @@ def gerar_link(prefixo):
         "status": "ok",
         "id": new_id,
         "prefixo": prefixo,
+        "creator": creator,
         "link": link
     })
+
 
 
 # --------------------------------------------------
