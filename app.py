@@ -71,16 +71,22 @@ def registrar(prefixo, id):
         return "Link inválido", 404
 
     # Capturar IP real
-    # tentar pegar X-Real-IP (enviado pelo nginx)
-    ip = request.headers.get("X-Real-IP")
+
+    # Cloudflare original IP
+    ip = request.headers.get("CF-Connecting-IP")
     
-    # se nao tiver, tentar pegar X-Forwarded-For
+    # Se não vier, tenta X-Real-IP (nginx)
+    if not ip:
+        ip = request.headers.get("X-Real-IP")
+    
+    # Se ainda não vier, tenta X-Forwarded-For
     if not ip:
         ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
     
     # fallback final
     if not ip:
         ip = request.remote_addr
+
     
 
     user_agent = request.headers.get("User-Agent", "desconhecido")
